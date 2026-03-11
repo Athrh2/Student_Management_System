@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Student;
+use Illuminate\Support\Facades\DB; 
 
 class StudentController extends Controller
 {
@@ -22,8 +23,15 @@ class StudentController extends Controller
                          ->orWhere('course', 'like', "%{$search}%")
                          ->orWhere('year', 'like', "%{$search}%");
         })->paginate($perPage)->withQueryString();
+
+        //pie chart
+        $courseData = Student::select('course',DB::raw('count(*) as total'))
+            ->groupBy('course')
+            ->get();
+        $chartLabels = $courseData->pluck('course');
+        $chartValues = $courseData->pluck('total');
         
-        return view('students.index', compact('students'));
+        return view('students.index', compact('students', 'chartLabels', 'chartValues'));
     }
 
     public function create()

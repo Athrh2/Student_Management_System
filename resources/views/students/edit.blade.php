@@ -3,33 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Edit Student - {{ $student->name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border: none; border-radius: 15px; }
+        .card-header { border-radius: 15px 15px 0 0 !important; }
+    </style>
 </head>
-<body>
-    <h2>Edit Student</h2>
+<body class="py-5">
 
-<form action="/students/{{ $student->id }}" method="POST">
-    @csrf
-    @method('PUT')
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="fw-bold text-warning mb-0">Edit Student</h3>
+                <a href="/students" class="btn btn-outline-secondary btn-sm">← Back to List</a>
+            </div>
 
-    <label>Name</label><br>
-    <input type="text" name="name" value="{{ $student->name }}"><br><br>
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark py-3">
+                    <h5 class="mb-0 fw-bold">Update Information for ID: {{ $student->id }}</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="/students/{{ $student->id }}" method="POST">
+                        @csrf
+                        @method('PUT')
 
-    <label>Email</label><br>
-    <input type="email" name="email" value="{{ $student->email }}"><br><br>
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-bold">Full Name</label>
+                            <input type="text" name="name" id="name" 
+                                   class="form-control @error('name') is-invalid @enderror" 
+                                   value="{{ old('name', $student->name) }}">
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-    <label>Course</label><br>
-    <input type="text" name="course" value="{{ $student->course }}"><br><br>
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-bold">Email Address</label>
+                            <input type="email" name="email" id="email" 
+                                   class="form-control @error('email') is-invalid @enderror" 
+                                   value="{{ old('email', $student->email) }}">
+                            @error('email')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-    <label>Year</label><br>
-    <input type="number" name="year" value="{{ $student->year }}"><br><br>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="course" class="form-label fw-bold">Course</label>
+                                <input type="text" name="course" id="course" 
+                                       class="form-control @error('course') is-invalid @enderror" 
+                                       value="{{ old('course', $student->course) }}">
+                                @error('course')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
 
-    <button type="submit">Update Student</button>
-</form>
+                            <div class="col-md-4 mb-3">
+                                <label for="year" class="form-label fw-bold">Year</label>
+                                <select name="year" id="year" class="form-select @error('year') is-invalid @enderror">
+                                    @php $currentYear = old('year', $student->year); @endphp
+                                    <option value="1" {{ $currentYear == 1 ? 'selected' : '' }}>Year 1</option>
+                                    <option value="2" {{ $currentYear == 2 ? 'selected' : '' }}>Year 2</option>
+                                    <option value="3" {{ $currentYear == 3 ? 'selected' : '' }}>Year 3</option>
+                                    <option value="4" {{ $currentYear == 4 ? 'selected' : '' }}>Year 4</option>
+                                </select>
+                                @error('year')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
 
-<br>
+                        <hr class="my-4">
 
-<a href="/students">Back</a>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">Update Student Record</button>
+                            <a href="/students" class="btn btn-light btn-sm text-muted">Cancel Changes</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">Last updated: {{ $student->updated_at->diffForHumans() }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
