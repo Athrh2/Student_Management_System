@@ -21,9 +21,11 @@ class StudentController extends Controller
     $sort = $request->input('sort', 'id');
     $direction = $request->input('direction', 'asc');
 
+    $highRiskStudents = \App\Models\Student::where('risk_level', 'High')->get(); 
+    $atRiskCount = $highRiskStudents->count();
+
     $query = Student::query();
 
-    // 1. Broad Search: Only search Name, Email, and Course
     if ($search) {
         $query->where(function($q) use ($search) {
             $q->where('name', 'like', "%{$search}%")
@@ -32,22 +34,19 @@ class StudentController extends Controller
         });
     }
 
-    // 2. Dedicated Gender Filter
     if ($request->filled('gender')) {
         $query->where('gender', $gender);
     }
 
-    // 3. Dedicated Year Filter (The "Year 1" fix)
     if ($request->filled('year')) {
         $query->where('year', $year);
     }
 
-    // 4. Final Execution (Ensure this is the ONLY $students = ...)
     $students = $query->orderBy($sort, $direction)
                       ->paginate($perPage == 'all' ? Student::count() : $perPage)
                       ->withQueryString();
-
-    return view('students.index', compact('students'));
+    
+    return view('students.index', compact('students', 'highRiskStudents', 'atRiskCount'));
 }
 
     public function visualize()
@@ -128,17 +127,23 @@ class StudentController extends Controller
             'attendance_rate' => 'required|integer|min:0|max:100',
         ]);
 
-        $assignment = $request->assignment_score;
-        $midterm    = $request->midterm_score;
-        $attendance = $request->attendance_rate;
+        $assignment = $request->assignment_score * 0.40;
+        $midterm    = $request->midterm_score * 0.50;
+        $attendance = $request->attendance_rate * 0.10;
+        $finalWeightedScore = $attendance + $midterm + $assignment;
 
         // Risk Logic
         $risk = 'Low';
-        if ($attendance < 60 || $midterm < 40) { 
+        if ($finalWeightedScore < 40) { 
             $risk = 'High'; 
-        } elseif ($attendance < 80 || $midterm < 60) { 
+        } elseif ($finalWeightedScore < 65) { 
             $risk = 'Medium'; 
+        }else{
+            $risk = 'Low';
         }
+
+        //display the % chance
+        //$risk_prediction = 100 - $finalWeightedScore;
 
         Student::create([
             'name'             => $request->name,

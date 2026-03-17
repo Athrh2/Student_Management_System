@@ -185,7 +185,7 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-dark">
                         <tr>
-                            <th style="width: 1%;" class="text-nowrap text-center">Risk Status</th>
+                            <th style="width: 1%;" class="text-nowrap text-center">
                                 <div class="d-flex align-items-center justify-content-between ">
                                     <span>ID</span>
                                     <div class="d-flex flex-column ms-2 " style="font-size: 0.7rem; line-height: 1;">
@@ -260,6 +260,9 @@
                             <th style="width: 1%;" class="text-nowrap">Risk Status</th>
 
                             <th class="text-center">Actions</th>
+
+                            <div class="container-fluid mb-4">
+            </div>
                         </tr>
                     </thead>
 
@@ -315,7 +318,16 @@
                             <td colspan="6" class="text-center py-5 text-muted">No student records match your search.</td>
                         </tr>
                         @endforelse
-                    
+
+                        <td>
+                            <span class="fw-bold text-dark">{{ $student->name }}</span>
+                            @if($student->risk_level == 'High')
+                                <span class="ms-2 badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small" style="font-size: 0.7rem;">
+                                    <i class="fas fa-flag me-1"></i> FLAG
+                                </span>
+                            @endif
+                        </td>
+
                     </tbody>
                 </table>
             </div>
@@ -364,6 +376,65 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card border-0 shadow-sm mt-5" style="border-radius: 15px; background-color: #fff5f5; border-left: 5px solid #dc3545 !important;">
+    <div class="card-body d-flex align-items-center justify-content-between p-4">
+        <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+                <i class="fas fa-exclamation-triangle text-danger fa-lg"></i>
+            </div>
+            <div>
+                <h6 class="text-muted small text-uppercase fw-bold mb-1">AI Early Warning System</h6>
+                <h4 class="fw-bold mb-0 text-danger">⚠ {{ $atRiskCount ?? 0 }} Students At Risk</h4>
+            </div>
+        </div>
+        
+        <button class="btn btn-danger rounded-pill px-4 fw-bold" type="button" 
+                data-bs-toggle="collapse" data-bs-target="#atRiskList" aria-expanded="false">
+            View Flagged List <i class="fas fa-chevron-down ms-2"></i>
+        </button>
+    </div>
+</div>
+
+<div class="collapse mt-3" id="atRiskList">
+    <div class="card border-0 shadow-sm p-4" style="border-radius: 15px;">
+        <h5 class="fw-bold text-dark mb-3">High Risk Students (Requires Attention)</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Course</th>
+                        <th>Weighted Score</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($highRiskStudents as $atRisk)
+                        <tr>
+                            <td class="fw-bold">{{ $atRisk->name }}</td>
+                            <td>{{ $atRisk->course }}</td>
+                            <td>
+                                @php
+                                    $score = ($atRisk->attendance_rate * 0.1) + ($atRisk->assignment_score * 0.4) + ($atRisk->midterm_score * 0.5);
+                                @endphp
+                                <span class="text-danger fw-bold">{{ number_format($score, 1) }}%</span>
+                            </td>
+                            <td>
+                                <a href="{{ route('students.show', $atRisk->id) }}" class="btn btn-sm btn-outline-primary rounded-pill">View Profile</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No high-risk students identified.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
             <p class="text-center text-muted mt-4 small">
                 Student Management System &copy; 2026
             </p>
