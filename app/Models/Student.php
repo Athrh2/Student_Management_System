@@ -10,6 +10,12 @@ class Student extends Model
         'name',
         'email',
         'course',
-        'year'
+        'year',
+        'gender',
+        'assignment_score',
+        'midterm_score',
+        'attendance_rate',
+        'risk_level', 
+        'photo'
     ];
 }

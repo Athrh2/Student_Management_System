@@ -15,9 +15,11 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email');
+            $table->string('gender')->nullable();
             $table->string('course');
             $table->integer('year');
             $table->timestamps();
+            $table->decimal('cgpa', 3,2)->default(0.00);
         });
     }
 

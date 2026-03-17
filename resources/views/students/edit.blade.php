@@ -19,15 +19,14 @@
             
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="fw-bold text-warning mb-0">Edit Student</h3>
-                <a href="/students" class="btn btn-outline-secondary btn-sm">← Back to List</a>
             </div>
 
             <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark py-3">
-                    <h5 class="mb-0 fw-bold">Update Information for ID: {{ $student->id }}</h5>
+                    <h5 class="mb-0 fw-bold">Update Information for ID: {{ str_pad($student->id, 3, '0', STR_PAD_LEFT) }}</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form action="/students/{{ $student->id }}" method="POST">
+                    <form action="{{ route('students.update', $student->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
 
@@ -40,7 +39,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-
+                        
                         <div class="mb-3">
                             <label for="email" class="form-label fw-bold">Email Address</label>
                             <input type="email" name="email" id="email" 
@@ -50,6 +49,18 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="col-md-4 mb-3">
+                                <label for="gender" class="form-label fw-bold">Gender</label>
+                                <select name="gender" id="gender" class="form-select @error('gender') is-invalid @enderror">
+                                    <option value="" selected disabled>Select</option>
+                                    <option value="Female" {{ old('gender') ?? $student->gender == 'Female' ? 'selected' : '' }}>Female</option>
+                                    <option value="Male" {{ old('gender') ?? $student->gender == 'Male' ? 'selected' : '' }}>Male</option>
+                                </select>
+                                @error('gender')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
 
                         <div class="row">
                             <div class="col-md-8 mb-3">
@@ -75,6 +86,28 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Assignment Score</label>
+                                <input type="number" name="assignment_score" class="form-control modern-input" value="{{ old('assignment_score', $student->assignment_score) }}" min="0" max="100">
+                            </div>
+    
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Midterm Score</label>
+                                <input type="number" name="midterm_score" class="form-control modern-input" value="{{ old('midterm_score', $student->midterm_score) }}" min="0" max="100">
+                            </div>
+    
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Attendance Rate (%)</label>
+                                <input type="number" name="attendance_rate" class="form-control modern-input" value="{{ old('attendance_rate', $student->attendance_rate) }}" min="0" max="100">
+                            </div>
+
+                            <form action="{{ route('students.store') }}" method="POST" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label>Student Photo</label>
+                                    <input type="file" name="photo" class="form-control">
+                                </div>
+
                         </div>
 
                         <hr class="my-4">
@@ -83,13 +116,33 @@
                             <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">Update Student Record</button>
                             <a href="/students" class="btn btn-light btn-sm text-muted">Cancel Changes</a>
                         </div>
+
+                        @if ($errors->any())
+                            <div class="alert alert-danger">
+                                <ul>
+                                    @foreach ($errors->all() as $error)
+                                      <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     </form>
                 </div>
             </div>
 
             <div class="text-center mt-4">
-                <small class="text-muted">Last updated: {{ $student->updated_at->diffForHumans() }}</small>
+                <small class="text-muted">
+                    Last updated: {{ $student->updated_at ? $student->updated_at->diffForHumans() : 'Never' }}
+                </small>
             </div>
+            <br>
+
+            <a href="/students" class="btn btn-outline-secondary btn-sm">← Back to List</a>
+
+            <p class="text-center text-muted mt-4 small">
+                Student Management System &copy; 2026
+            </p>
+
         </div>
     </div>
 </div>
