@@ -86,20 +86,20 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-bold text-secondary small">Assignment Score</label>
-                                <input type="number" name="assignment_score" class="form-control modern-input" value="{{ old('assignment_score', $student->assignment_score) }}" min="0" max="100">
-                            </div>
-    
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-bold text-secondary small">Midterm Score</label>
-                                <input type="number" name="midterm_score" class="form-control modern-input" value="{{ old('midterm_score', $student->midterm_score) }}" min="0" max="100">
-                            </div>
     
                             <div class="col-md-4 mb-3">
                                 <label class="form-label fw-bold text-secondary small">Attendance Rate (%)</label>
                                 <input type="number" name="attendance_rate" class="form-control modern-input" value="{{ old('attendance_rate', $student->attendance_rate) }}" min="0" max="100">
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Test Score</label>
+                                <input type="number" name="test_score" class="form-control modern-input" value="{{ old('test_score', $student->test_score) }}" min="0" max="100">
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Assignment Score</label>
+                                <input type="number" name="assignment_score" class="form-control modern-input" value="{{ old('assignment_score', $student->assignment_score) }}" min="0" max="100">
                             </div>
 
                             <form action="{{ route('students.store') }}" method="POST" enctype="multipart/form-data">
@@ -148,5 +148,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@include('partials.chatbot')
 </body>
 </html>

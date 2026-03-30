@@ -95,18 +95,18 @@
                             </div>
 
                             <div class="col-md-4 mb-3">
-                                <label class="form-label fw-bold text-secondary small">Assignment (0-100)</label>
-                                <input type="number" name="assignment_score" class="form-control modern-input" min="0" max="100" required>
-                            </div>
-    
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-bold text-secondary small">Midterm (0-100)</label>
-                                <input type="number" name="midterm_score" class="form-control modern-input" min="0" max="100" required>
-                            </div>
-    
-                            <div class="col-md-4 mb-3">
                                 <label class="form-label fw-bold text-secondary small">Attendance %</label>
                                 <input type="number" name="attendance_rate" class="form-control modern-input" min="0" max="100" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Test (0-100)</label>
+                                <input type="number" name="test_score" class="form-control modern-input" min="0" max="100" required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold text-secondary small">Assignment (0-100)</label>
+                                <input type="number" name="assignment_score" class="form-control modern-input" min="0" max="100" required>
                             </div>
 
                             <form action="{{ route('students.store') }}" method="POST" enctype="multipart/form-data">
@@ -180,6 +180,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
+@include('partials.chatbot')
 </body>
 </html>

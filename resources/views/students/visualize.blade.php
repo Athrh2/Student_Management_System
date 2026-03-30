@@ -27,8 +27,9 @@
             border: 2px solid #e2e8f0; border-radius: 50px !important; transition: all 0.2s ease;
         }
         .btn-modern-action:hover { background-color: #dc3545; color: #ffffff !important; border-color: #dc3545; }
-        .card { border-radius: 15px; transition: transform 0.2s; }
         .card:hover { transform: translateY(-5px); }
+        .card { border-radius: 15px; transition: transform 0.2s; border: none; }
+        .heatmap-table td { transition: background-color 0.3s ease; }
     </style>
 </head>
 <body class="p-4 bg-light">
@@ -72,7 +73,7 @@
         </div>
 
         <div class="row">
-            <div class="col-12">
+            <div class="col-md-6">
                 <div class="card border-0 shadow-sm p-4">
                     <h5 class="fw-bold text-center mb-4">Risk Distribution Overview</h5>
                     <div style="height: 350px;">
@@ -80,7 +81,48 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm p-4">
+                    <h5 class="fw-bold mb-4 text-primary"><i class="fas fa-th me-2"></i>AI Performance Heatmap</h5>
+                    <div class="table-responsive rounded-3 border">
+                        <table class="table table-hover mb-0 heatmap-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="p-3">Course</th>
+                                    <th class="p-3 text-center">High Risk</th>
+                                    <th class="p-3 text-center">Medium Risk</th>
+                                    <th class="p-3 text-center">Low Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($courses as $course)
+                                <tr>
+                                    <td class="p-3 fw-bold text-secondary">{{ $course }}</td>
+                                    @foreach(['High', 'Medium', 'Low'] as $level)
+                                        @php
+                                            $count = $heatmapData->where('course', $course)->where('risk_level', $level)->first()->total ?? 0;
+                                            $color = match($level) {
+                                                'High' => ($count > 0 ? '#fee2e2' : '#ffffff'),
+                                                'Medium' => ($count > 0 ? '#fef3c7' : '#ffffff'),
+                                                'Low' => ($count > 0 ? '#dcfce7' : '#ffffff'),
+                                                default => '#ffffff'
+                                            };
+                                        @endphp
+                                        <td class="p-3 text-center fw-bold" style="background-color: {{ $color }};">
+                                            {{ $count }}
+                                        </td>
+                                    @endforeach
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
+
+
     </div>
 
     <script>
@@ -123,7 +165,11 @@
                 labels: courseLabels, 
                 datasets: [{ 
                     data: courseValues, 
-                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'] 
+                    backgroundColor: [
+                        '#717472', '#1cc88a', '#36b9cc',
+                        '#dc3545', '#e1890e', '#198754',
+                        '#f343c4', '#f3eb5e', '#c105fb','#4e73df'
+                    ] 
                 }] 
             },
             options: {
@@ -174,7 +220,8 @@
                         Number(`{{ $mediumRisk ?? 0 }}`), 
                         Number(`{{ $lowRisk ?? 0 }}`)
                     ],
-                    backgroundColor: ['#dc3545', '#ffc107', '#198754'],
+                    backgroundColor: 
+                    ['#dc3545', '#f8c733', '#198754'],
                     borderWidth: 0
                 }]
             },
@@ -184,5 +231,6 @@
             }
         });
     </script>
+    @include('partials.chatbot')
 </body>
 </html>

@@ -6,26 +6,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB; 
 
 use App\Models\Student;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class StudentController extends Controller
 {
-    //display all student with search, sorting, pagination
     public function index(Request $request)
-   {
+{
     $search = $request->input('search');
     $gender = $request->input('gender');
     $year = $request->input('year');
     
-    // Other settings
     $perPage = $request->input('per_page', 5);
     $sort = $request->input('sort', 'id');
     $direction = $request->input('direction', 'asc');
 
-    $highRiskStudents = \App\Models\Student::where('risk_level', 'High')->get(); 
-    $atRiskCount = $highRiskStudents->count();
-
     $query = Student::query();
 
+    // Filtering logic
     if ($search) {
         $query->where(function($q) use ($search) {
             $q->where('name', 'like', "%{$search}%")
@@ -42,12 +39,47 @@ class StudentController extends Controller
         $query->where('year', $year);
     }
 
+    // 1. Get the paginated students
     $students = $query->orderBy($sort, $direction)
                       ->paginate($perPage == 'all' ? Student::count() : $perPage)
                       ->withQueryString();
+
+    // 2. Loop through each student to attach the "AI Prediction" data
+    $students->getCollection()->transform(function ($student) {
+    // A. Calculate what they have earned RIGHT NOW (Max 50%)
+    $earnedAttendance = ($student->attendance / 100) * 10;
+    $earnedTest = ($student->test_score / 100) * 15;
+    $earnedAssignment = ($student->assignment_score / 100) * 25;
     
-    return view('students.index', compact('students', 'highRiskStudents', 'atRiskCount'));
-}
+    // This is the "Current Mark" shown on the profile
+    $student->current_progress = round($earnedAttendance + $earnedTest + $earnedAssignment, 2);
+
+    // B. Calculate the AI Prediction (Max 100%)
+    $performanceRatio = ($student->current_progress > 0) ? ($student->current_progress / 50) : 0;
+    $student->forecasted_total = round($student->current_progress + ($performanceRatio * 50), 2);
+
+    if ($student->attendance < 80) {
+                $student->risk_status = 'Critical: Low Attendance';
+                $student->risk_color = 'danger';
+            } elseif ($student->forecasted_total < 50) {
+                $student->risk_status = 'At Risk';
+                $student->risk_color = 'warning';
+            } else {
+                $student->risk_status = 'Safe';
+                $student->risk_color = 'success';
+            }
+
+    return $student;
+});
+
+        $highRiskStudents = \App\Models\Student::where('risk_level', 'High')->get(); 
+        // 2. Update the count based on our AI calculation
+        $atRiskCount = $highRiskStudents->count();
+
+        // 3. IMPORTANT: Pass 'highRiskStudents' to the view so the @forelse finds it
+        return view('students.index', compact('students', 'highRiskStudents', 'atRiskCount'));
+    }
+
 
     public function visualize()
     {
@@ -71,6 +103,18 @@ class StudentController extends Controller
         $mediumRisk = Student::where('risk_level', 'Medium')->count();
         $lowRisk = Student::where('risk_level', 'Low')->count();
 
+        $students = Student::query()->paginate(10);
+        $course = Student::distinct()->pluck('course');
+        $heatmapData = Student::select('course', 'risk_level', DB::raw('count(*) as total'))
+            ->groupBy('course', 'risk_level')
+            ->get();
+
+        $stats = [
+            'high' => Student::where('risk_level', 'High')->count(),
+            'medium' => Student::where('risk_level', 'Medium')->count(),
+            'low' => Student::where('risk_level', 'Low')->count(),
+        ];
+
         return view('students.visualize', [
             // Ensure these variable names match exactly what you use in the Blade script
             // pluck = label for graph
@@ -83,7 +127,11 @@ class StudentController extends Controller
             'highRisk' => $highRisk,
             'mediumRisk' => $mediumRisk,
             'lowRisk' => $lowRisk,
-            'total' => $highRisk + $mediumRisk + $lowRisk
+            'total' => $highRisk + $mediumRisk + $lowRisk,
+            'students' => $students,
+            'courses' => $course, 
+            'heatmapData' => $heatmapData,
+            'stats' => $stats
         ]);
     }
     
@@ -97,13 +145,18 @@ class StudentController extends Controller
         $mediumRisk = Student::where('risk_level', 'Medium')->count();
         $lowRisk = Student::where('risk_level', 'Low')->count();
 
+        $topRiskStudents = Student::whereIn('risk_level', ['High', 'Medium'])
+                            ->orderBy('attendance_rate', 'asc')
+                            ->get();
+
         return view('students.admin', compact(
             'totalStudents', 
             'totalCourses', 
             'recentStudents', 
             'highRisk', 
             'mediumRisk', 
-            'lowRisk'
+            'lowRisk',
+            'topRiskStudents' 
     ));
     }
 
@@ -123,14 +176,14 @@ class StudentController extends Controller
             'course' => 'required',
             'year' => 'required|integer',
             'assignment_score' => 'required|integer|min:0|max:100',
-            'midterm_score' => 'required|integer|min:0|max:100',
+            'test_score' => 'required|integer|min:0|max:100',
             'attendance_rate' => 'required|integer|min:0|max:100',
         ]);
 
-        $assignment = $request->assignment_score * 0.40;
-        $midterm    = $request->midterm_score * 0.50;
+        $assignment = $request->assignment_score * 0.25;
+        $test    = $request->test_score * 0.15;
         $attendance = $request->attendance_rate * 0.10;
-        $finalWeightedScore = $attendance + $midterm + $assignment;
+        $finalWeightedScore = $attendance + $test + $assignment;
 
         // Risk Logic
         $risk = 'Low';
@@ -143,7 +196,7 @@ class StudentController extends Controller
         }
 
         //display the % chance
-        //$risk_prediction = 100 - $finalWeightedScore;
+        $risk_prediction = 100 - $finalWeightedScore;
 
         Student::create([
             'name'             => $request->name,
@@ -152,7 +205,7 @@ class StudentController extends Controller
             'course'           => $request->course,
             'year'             => $request->year,
             'assignment_score' => $assignment,
-            'midterm_score'    => $midterm,
+            'test_score'    => $test,
             'attendance_rate'  => $attendance,
             'risk_level'       => $risk,
         ]);
@@ -175,16 +228,27 @@ class StudentController extends Controller
             'course' => 'required',
             'year' => 'required|integer',
             'assignment_score' => 'required|integer|min:0|max:100',
-            'midterm_score' => 'required|integer|min:0|max:100',
+            'test_score' => 'required|integer|min:0|max:100',
             'attendance_rate' => 'required|integer|min:0|max:100',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
         ]);
 
-        $risk = 'Low'; // Default
-        if ($request->attendance_rate < 60 || $request->midterm_score < 40) {
-            $risk = 'High';
-        } elseif ($request->attendance_rate < 80 || $request->midterm_score < 60) {
-            $risk = 'Medium';
+        $attendanceWeight = $request->attendance_rate * 0.10;
+        $testWeight = $request->test_score * 0.15;
+        $assignmentWeight = $request->assignment_score * 0.25;
+        $currentTotal = $attendanceWeight + $testWeight + $assignmentWeight;
+
+        // calc AI prediction
+        $performanceRatio = $currentTotal / 50;
+        $predictedFinal = $performanceRatio * 50;
+        $totalPredictedScore = $currentTotal + $predictedFinal;
+
+        $risk = "Low";
+        if($totalPredictedScore < 40){
+            $risk = "High";
+        }
+        elseif($totalPredictedScore < 60){
+            $risk = "Medium";
         }
 
         if ($request->hasFile('photo')) {
@@ -195,10 +259,12 @@ class StudentController extends Controller
         }
 
         $validated['risk_level'] = $risk;
+        $validated['tets_score'] = $request->test_score;
+        $validated['predicted_final_score'] = $predictedFinal;
 
         $student->update($validated); 
 
-        return redirect()->route('students.index')->with('success', 'Student updated!');
+        return redirect()->back()->with('success', 'AI Predictio Updated.');
     }
 
     public function destroy($id)
@@ -222,7 +288,7 @@ class StudentController extends Controller
             "Expires"             => "0",
         ];
 
-        $columns = ['ID', 'Name', 'Email','Gender', 'Course', 'Year'];
+        $columns = ['ID', 'Name', 'Email','Gender', 'Course', 'Year','Attendance Rate', 'Test Score', 'Assignment Score', 'Risk Level', 'Predicted Final', 'Actual Final'];
 
         $callback = function() use ($students, $columns) {
             $file = fopen('php://output', 'w'); //open temporary stream to write data directly to user browser
@@ -239,6 +305,10 @@ class StudentController extends Controller
                     $student->gender,
                     $student->course,
                     $student->year,
+                    $student->attendance_rate,
+                    $student->test_score,
+                    $student->assignment_score,            
+                    $student->risk_level
                 ]);
             }
             fclose($file);
@@ -266,14 +336,14 @@ class StudentController extends Controller
             if (empty($data[1])) continue;
     
             // Correctly assign separate indices
-            $midterm = $data[7];
+            $testterm = $data[7];
             $attendance = $data[8];
     
             // ADDED: Risk Calculation for Import
             $currentRisk = 'Low'; 
-            if ($attendance < 60 || $midterm < 40) {
+            if ($attendance < 60 || $testterm < 40) {
                 $currentRisk = 'High';
-            } elseif ($attendance < 80 || $midterm < 60) {
+            } elseif ($attendance < 80 || $testterm < 60) {
                 $currentRisk = 'Medium';
             }
 
@@ -284,7 +354,7 @@ class StudentController extends Controller
                 'course'           => $data[4],
                 'year'             => $data[5],
                 'assignment_score' => $data[6], // Column G
-                'midterm_score'    => $midterm, // Column H
+                'test_score'    => $testterm, // Column H
                 'attendance_rate'  => $attendance, // Column I (Fixed index)
                 'risk_level'       => $currentRisk  // Added so Admin dashboard syncs
             ]);
@@ -294,9 +364,23 @@ class StudentController extends Controller
         return redirect('/students')->with('success', "Import successful! $count students added.");
     }
 
-    public function show(Student $student)
+    public function show($id)
     {
-        //dd($student);
+        $student = Student::findOrFail($id);
+
+        $attendance  = $student->attendance_rate ?? $student->attendance ?? 0;  // use whichever field is correct
+        $test        = $student->test_score ?? 0;
+        $assignment  = $student->assignment_score ?? 0;
+
+        $earnedAttendance  = ($attendance  / 100) * 10;
+        $earnedTest        = ($test        / 100) * 15;
+        $earnedAssignment  = ($assignment  / 100) * 25;
+
+        $student->current_progress = round($earnedAttendance + $earnedTest + $earnedAssignment, 2);
+
+        $performanceRatio = $student->current_progress > 0 ? ($student->current_progress / 50) : 0;
+        $student->forecasted_total = round($student->current_progress + ($performanceRatio * 50), 2);
+
         return view('students.show', compact('student'));
     }
 
@@ -318,6 +402,33 @@ class StudentController extends Controller
         Student::whereIn('id', $ids)->delete();
 
         return redirect()->route('students.index')->with('success', 'Selected students deleted successfully.');
+    }
+
+    public function downloadPDF($id)
+    {
+        $student = Student::findOrFail($id);
+        $pdf = Pdf::loadView('students.pdf_report', compact('student'));
+
+        return $pdf->download("Academic_Report_{$student->student_id}.pdf");
+    }
+
+    public function predictFinalMark($testScore, $assignmentScore, $attendanceScore)
+    {
+        $earnedFromTest = ($testScore / 100) * 15;
+        $earnedFromAssignment= ($assignmentScore / 100 * 25);
+        $totalEarnedSoFar = $earnedFromTest + $earnedFromAssignment;
+
+        //tell what mark they get/capture
+        $performanceRatio = ($totalEarnedSoFar / 40);
+
+        //predict out of 50
+        $predictedFinalScore = $performanceRatio * 50;
+
+        //internal + predict + attendance
+        $earnedAttendance = ($attendanceScore / 100) * 10;
+        $forecastedTotal = $totalEarnedSoFar + $predictedFinalScore + $earnedAttendance;
+
+        return round($forecastedTotal, 2);
     }
 
 }

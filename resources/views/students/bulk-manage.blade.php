@@ -10,7 +10,6 @@
     <div class="container-fluid mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="text-danger fw-bold mb-0 display-4">Bulk Delete</h1>
-            <a href="{{ route('students.index') }}" class="btn btn-outline-secondary">⬅️ Back to List</a>
         </div>
 
         <hr class="mt-2 mb-4">
@@ -89,6 +88,12 @@
         </div>
     </div>
 
+    <a href="/students" class="btn btn-outline-secondary btn-sm">← Back to List</a>
+
+    <p class="text-center text-muted mt-4 small">
+        Student Management System &copy; 2026
+    </p>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     // 1. Modal & Selection Logic
@@ -126,5 +131,6 @@
         });
     }, 3000);
 </script>
+@include('partials.chatbot')
 </body>
 </html>

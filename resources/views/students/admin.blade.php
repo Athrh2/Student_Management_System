@@ -168,22 +168,57 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Course</th>
+                                    <th>Risk Status</th>
+                                    <th>Trend Analysis</th>
+                                    <th>Recommendation</th>
                                     <th>Added</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($recentStudents as $recent)
+                                @forelse($topRiskStudents as $student)
                                 <tr>
-                                    <td>{{ $recent->name }}</td>
-                                    <td><span class="badge bg-light text-dark border">{{ $recent->course }}</span></td>
-                                    <td class="small text-muted">{{ $recent->created_at->diffForHumans() }}</td>
+                                    <td>{{ $student->name }}</td>
+                                    <td><span class="badge bg-light text-dark border">{{ $student->course }}</span></td>
+                                    <td>
+                                        @if($student->risk_level == 'High')
+                                            <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
+                                                🔴 High Risk
+                                            </span>
+                                        @elseif($student->risk_level == 'Medium')
+                                            <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning-subtle px-3 py-2">
+                                                🟡 Medium Risk
+                                                </span>
+                                        @else
+                                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                                                🟢 Low Risk
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill bg-{{ $student->performance_trend['color'] }} px-3">
+                                            <i class="fas fa-{{ $student->performance_trend['icon'] }} me-1"></i>
+                                            {{ $student->performance_trend['status'] }}
+                                        </span>
+                                    </td>
+                                    <td class="text-muted small">
+                                        {{ $student->performance_trend['insight'] }}
+                                    </td>
+                                    <td class="small text-muted">{{ $student->created_at->diffForHumans() }}</td>
                                 </tr>
-                                @endforeach
+                                @empty
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">
+                                        No significant performance trends detected.
+                                    </td>
+                                </tr>
+                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
+        @include('partials.chatbot')
 </body>
 </html>

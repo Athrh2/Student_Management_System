@@ -76,6 +76,7 @@
         border-color: #dc3545;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
+
 </style>
 
 </head>
@@ -83,7 +84,7 @@
     <div class="mb-2 d-flex justify-content-between align-items-center">
         <div>
             <h1 class="text-primary fw-bold display-5 mb-0" style="letter-spacing: -1.5px;">Student Dashboard</h1>
-            <h6 class="text-secondary mt-0 fw-medium">Welcome, {{ Auth::user()->name }}.</h6>
+            <h6 class="text-secondary mt-0 fw-medium">Welcome, {{ Auth::user()->name ?? 'Lecturer' }}.</h6>
         </div>
 
         <div class="d-flex align-items-center modern-nav-container">
@@ -262,7 +263,7 @@
                             <th class="text-center">Actions</th>
 
                             <div class="container-fluid mb-4">
-            </div>
+                          </div>
                         </tr>
                     </thead>
 
@@ -270,7 +271,13 @@
                         @forelse($students as $student)
                         <tr>
                             <td>{{ str_pad($student->id, 3, '0', STR_PAD_LEFT) }}</td>
-                            <td class="fw-bold">{{ $student->name }}</td>
+                            <td class="fw-bold">{{ $student->name }}
+                                @if($student->risk_level == 'High')
+                                    <span class="ms-2 badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small" style="font-size: 0.7rem;">
+                                        <i class="fas fa-flag me-1"></i> FLAG
+                                    </span>
+                                @endif
+                            </td>
                             <td>{{ $student->email }}</td>
                             <td>{{ $student->gender }}</td>
                             <td>{{ $student->course }}</td>
@@ -312,21 +319,13 @@
                                     <i class="bi bi-eye"></i> Detail
                                 </a>
                             </td>
+
                         </tr>
                         @empty
                         <tr>
                             <td colspan="6" class="text-center py-5 text-muted">No student records match your search.</td>
                         </tr>
                         @endforelse
-
-                        <td>
-                            <span class="fw-bold text-dark">{{ $student->name }}</span>
-                            @if($student->risk_level == 'High')
-                                <span class="ms-2 badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small" style="font-size: 0.7rem;">
-                                    <i class="fas fa-flag me-1"></i> FLAG
-                                </span>
-                            @endif
-                        </td>
 
                     </tbody>
                 </table>
@@ -403,6 +402,7 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
+                        <th>ID</th>
                         <th>Name</th>
                         <th>Course</th>
                         <th>Weighted Score</th>
@@ -411,12 +411,13 @@
                 </thead>
                 <tbody>
                     @forelse($highRiskStudents as $atRisk)
-                        <tr>
-                            <td class="fw-bold">{{ $atRisk->name }}</td>
+                        <tr> 
+                            <td class="fw-bold">{{ str_pad($atRisk->id,3, '0', STR_PAD_LEFT) }}</td>
+                            <td>{{ $atRisk->name }}</td>
                             <td>{{ $atRisk->course }}</td>
                             <td>
                                 @php
-                                    $score = ($atRisk->attendance_rate * 0.1) + ($atRisk->assignment_score * 0.4) + ($atRisk->midterm_score * 0.5);
+                                    $score = ($atRisk->attendance_rate * 0.1) + ($atRisk->assignment_score * 0.25) + ($atRisk->test_score * 0.15);
                                 @endphp
                                 <span class="text-danger fw-bold">{{ number_format($score, 1) }}%</span>
                             </td>
@@ -435,11 +436,13 @@
     </div>
 </div>
 
-            <p class="text-center text-muted mt-4 small">
-                Student Management System &copy; 2026
-            </p>
+<p class="text-center text-muted mt-4 small">
+    Student Management System &copy; 2026
+</p>
+
 
 <script>
+
     // Listen for when a delete button is clicked
     document.querySelectorAll('.btn-delete').forEach(button => {
         button.addEventListener('click', function() {
@@ -454,18 +457,19 @@
             form.action = '/students/' + studentId;
         });
     });
-</script>
 
-<script>
     document.getElementById('selectAll').addEventListener('click', function() {
         let checkboxes = document.querySelectorAll('.student-checkbox');
         checkboxes.forEach(checkbox => {
             checkbox.checked = this.checked;
         });
     });
+
 </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+@include('partials.chatbot')
 
 </body>
 </html>

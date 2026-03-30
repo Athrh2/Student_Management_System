@@ -20,6 +20,7 @@ return new class extends Migration
             $table->integer('year');
             $table->timestamps();
             $table->decimal('cgpa', 3,2)->default(0.00);
+            $table->float('attendance')->default(0);
         });
     }
 

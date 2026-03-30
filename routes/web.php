@@ -1,14 +1,15 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\StudentController; // Don't forget to import this!
+use App\Http\Controllers\StudentController; 
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ChatbotController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// We can keep the default dashboard for now, or delete it later
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -34,8 +35,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/students/visualize', [StudentController::class, 'visualize'])->name('students.visualize');
     Route::get('/students/admin', [StudentController::class, 'admin'])->name('students.admin');
 
-    // Main Resource (Index, Create, Store, Edit, Update, Destroy, Show)
-    Route::resource('students', StudentController::class);
+    Route::get('/students/{id}/pdf', [StudentController::class, 'downloadPDF'])->name('students.pdf');
+
+    Route::get('/students/{student}', [StudentController::class, 'show']);
 });
+
+    Route::resource('students', StudentController::class);
+
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+Route::post('/chatbot/ask', [ChatbotController::class, 'handleMessage']);
+
+Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot.index');
+Route::post('/chatbot/message', [ChatbotController::class, 'message'])->name('chatbot.message');
 
 require __DIR__.'/auth.php';
