@@ -22,6 +22,7 @@ class IntentQueryService
 
     /**
      * Parse user message and return structured intent.
+     * convert human language -> structured data the db paham
      */
     public function parseIntent(string $message): array
     {

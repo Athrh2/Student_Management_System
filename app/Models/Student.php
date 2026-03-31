@@ -16,10 +16,30 @@ class Student extends Model
         'test_score',
         'attendance_rate',
         'risk_level', 
-        'photo'
+        'photo',
+        'predicted_final_score',
+        'actual_final_score',
     ];
 
-    protected $appends = ['risk_explanation'];
+    protected $appends = ['risk_explanation', 'current_progress'];
+
+    public function getCurrentProgressAttribute()
+    {
+        return round(
+            ($this->attendance_rate / 100) * 10 +
+            ($this->test_score / 100) * 15 +
+            ($this->assignment_score / 100) * 25,
+            2
+        );
+    }
+
+// WITH this (works on all PHP versions):
+public static function calculateRisk(float $score)
+{
+    if ($score < 20)   return 'High';
+    if ($score < 32.5) return 'Medium';
+    return 'Low';
+}
 
     public function getRiskExplanationAttribute()
     {

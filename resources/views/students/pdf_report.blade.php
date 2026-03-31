@@ -66,13 +66,42 @@
         <thead>
             <tr>
                 <th>Assessment Component</th>
-                <th>Score</th>
+                <th>Raw Score</th>
+                <th>Weighted</th>
+                <th>Max</th>
             </tr>
         </thead>
         <tbody>
-            <tr><td>Attendance (10%)</td><td>{{ $student->attendance_rate * 0.1}}</td></tr>
-            <tr><td>Test (15%)</td><td>{{ $student->test_score * 0.15}}</td></tr>
-            <tr><td>Assignments (25%)</td><td>{{ $student->assignment_score * 0.25}}</td></tr>
+            <tr>
+                <td>Attendance (10%)</td>
+                <td>{{ $student->attendance_rate }}%</td>
+                <td>{{ round($student->attendance_rate * 0.10, 2) }}</td>
+                <td>10</td>
+            </tr>
+            <tr>
+                <td>Test (15%)</td>
+                <td>{{ $student->test_score }}%</td>
+                <td>{{ round($student->test_score * 0.15, 2) }}</td>
+                <td>15</td>
+            </tr>
+            <tr>
+                <td>Assignments (25%)</td>
+                <td>{{ $student->assignment_score }}%</td>
+                <td>{{ round($student->assignment_score * 0.25, 2) }}</td>
+                <td>25</td>
+            </tr>
+            <tr style="background:#f8f9fa;font-weight:bold;">
+                <td>Current Progress</td>
+                <td>—</td>
+                <td>{{ $student->current_progress }}</td>
+                <td>50</td>
+            </tr>
+            <tr style="background:#e8f4fd;font-weight:bold;">
+                <td>Forecasted Final</td>
+                <td>—</td>
+                <td>{{ round($student->current_progress * 2, 2) }}</td>
+                <td>100</td>
+            </tr>
         </tbody>
     </table>
 

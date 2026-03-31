@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\Http;
 
 use App\Models\Student;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -39,6 +40,10 @@ class StudentController extends Controller
         $query->where('year', $year);
     }
 
+    if ($request->filled('course')) {
+        $query->where('course', $request->input('course'));
+    }
+
     // 1. Get the paginated students
     $students = $query->orderBy($sort, $direction)
                       ->paginate($perPage == 'all' ? Student::count() : $perPage)
@@ -46,31 +51,11 @@ class StudentController extends Controller
 
     // 2. Loop through each student to attach the "AI Prediction" data
     $students->getCollection()->transform(function ($student) {
-    // A. Calculate what they have earned RIGHT NOW (Max 50%)
-    $earnedAttendance = ($student->attendance / 100) * 10;
-    $earnedTest = ($student->test_score / 100) * 15;
-    $earnedAssignment = ($student->assignment_score / 100) * 25;
     
-    // This is the "Current Mark" shown on the profile
-    $student->current_progress = round($earnedAttendance + $earnedTest + $earnedAssignment, 2);
-
-    // B. Calculate the AI Prediction (Max 100%)
-    $performanceRatio = ($student->current_progress > 0) ? ($student->current_progress / 50) : 0;
-    $student->forecasted_total = round($student->current_progress + ($performanceRatio * 50), 2);
-
-    if ($student->attendance < 80) {
-                $student->risk_status = 'Critical: Low Attendance';
-                $student->risk_color = 'danger';
-            } elseif ($student->forecasted_total < 50) {
-                $student->risk_status = 'At Risk';
-                $student->risk_color = 'warning';
-            } else {
-                $student->risk_status = 'Safe';
-                $student->risk_color = 'success';
-            }
+    $student->forecasted_total = round($student->current_progress * 2, 2);
 
     return $student;
-});
+    });
 
         $highRiskStudents = \App\Models\Student::where('risk_level', 'High')->get(); 
         // 2. Update the count based on our AI calculation
@@ -185,15 +170,8 @@ class StudentController extends Controller
         $attendance = $request->attendance_rate * 0.10;
         $finalWeightedScore = $attendance + $test + $assignment;
 
-        // Risk Logic
-        $risk = 'Low';
-        if ($finalWeightedScore < 40) { 
-            $risk = 'High'; 
-        } elseif ($finalWeightedScore < 65) { 
-            $risk = 'Medium'; 
-        }else{
-            $risk = 'Low';
-        }
+        $tempStudent = new Student($request->only(['attendance_rate', 'test_score', 'assignment_score']));
+        $risk = Student::calculateRisk($tempStudent->current_progress);
 
         //display the % chance
         $risk_prediction = 100 - $finalWeightedScore;
@@ -204,9 +182,9 @@ class StudentController extends Controller
             'gender'           => $request->gender,
             'course'           => $request->course,
             'year'             => $request->year,
-            'assignment_score' => $assignment,
-            'test_score'    => $test,
-            'attendance_rate'  => $attendance,
+            'assignment_score' => $request->assignment_score,
+            'test_score'    => $request->test_score,
+            'attendance_rate'  => $request->attendance_rate,
             'risk_level'       => $risk,
         ]);
 
@@ -233,23 +211,9 @@ class StudentController extends Controller
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
         ]);
 
-        $attendanceWeight = $request->attendance_rate * 0.10;
-        $testWeight = $request->test_score * 0.15;
-        $assignmentWeight = $request->assignment_score * 0.25;
-        $currentTotal = $attendanceWeight + $testWeight + $assignmentWeight;
-
-        // calc AI prediction
-        $performanceRatio = $currentTotal / 50;
-        $predictedFinal = $performanceRatio * 50;
-        $totalPredictedScore = $currentTotal + $predictedFinal;
-
-        $risk = "Low";
-        if($totalPredictedScore < 40){
-            $risk = "High";
-        }
-        elseif($totalPredictedScore < 60){
-            $risk = "Medium";
-        }
+        $tempStudent = new Student($request->only(['attendance_rate','test_score','assignment_score']));
+        $risk = Student::calculateRisk($tempStudent->current_progress);
+        $validated['risk_level'] = $risk;
 
         if ($request->hasFile('photo')) {
             // Save the photo in public/uploads/students
@@ -259,8 +223,8 @@ class StudentController extends Controller
         }
 
         $validated['risk_level'] = $risk;
-        $validated['tets_score'] = $request->test_score;
-        $validated['predicted_final_score'] = $predictedFinal;
+        //$validated['test_score'] = $request->test_score;
+        //$validated['predicted_final_score'] = round($tempStudent->current_progress * 2, 2);
 
         $student->update($validated); 
 
@@ -339,13 +303,13 @@ class StudentController extends Controller
             $testterm = $data[7];
             $attendance = $data[8];
     
-            // ADDED: Risk Calculation for Import
-            $currentRisk = 'Low'; 
-            if ($attendance < 60 || $testterm < 40) {
-                $currentRisk = 'High';
-            } elseif ($attendance < 80 || $testterm < 60) {
-                $currentRisk = 'Medium';
-            }
+            // Risk Calculation for Import
+            $tempStudent = new Student([
+                'attendance_rate'  => $data[8],
+                'test_score'       => $data[7],
+                'assignment_score' => $data[6],
+            ]);
+            $currentRisk = Student::calculateRisk($tempStudent->current_progress);
 
             Student::create([
                 'name'             => $data[1],
@@ -367,20 +331,7 @@ class StudentController extends Controller
     public function show($id)
     {
         $student = Student::findOrFail($id);
-
-        $attendance  = $student->attendance_rate ?? $student->attendance ?? 0;  // use whichever field is correct
-        $test        = $student->test_score ?? 0;
-        $assignment  = $student->assignment_score ?? 0;
-
-        $earnedAttendance  = ($attendance  / 100) * 10;
-        $earnedTest        = ($test        / 100) * 15;
-        $earnedAssignment  = ($assignment  / 100) * 25;
-
-        $student->current_progress = round($earnedAttendance + $earnedTest + $earnedAssignment, 2);
-
-        $performanceRatio = $student->current_progress > 0 ? ($student->current_progress / 50) : 0;
-        $student->forecasted_total = round($student->current_progress + ($performanceRatio * 50), 2);
-
+        $student->forecasted_total = round($student->current_progress * 2, 2);
         return view('students.show', compact('student'));
     }
 
@@ -430,5 +381,69 @@ class StudentController extends Controller
 
         return round($forecastedTotal, 2);
     }
+
+    public function generateAiReport(Student $student)
+{
+    $progress = $student->current_progress;
+    $forecast = round($progress * 2, 2);
+    $trend    = $student->performance_trend;
+
+    $prompt = "Write a professional 2-3 paragraph academic performance report for:
+Student: {$student->name}
+Course: {$student->course}, Year {$student->year}
+Attendance: {$student->attendance_rate}%, Test: {$student->test_score}%, Assignment: {$student->assignment_score}%
+Current Progress: {$progress}/50, Forecasted Final: {$forecast}/100
+Risk Level: {$student->risk_level}, Trend: {$trend['status']}
+
+Include: academic standing summary, key concerns or strengths, actionable recommendations.
+Write in paragraphs only, no bullet points.";
+
+    $apiKey = env('ANTHROPIC_API_KEY');
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.anthropic.com/v1/messages');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'x-api-key: ' . $apiKey,
+        'anthropic-version: 2023-06-01',
+        'content-type: application/json',
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'model'      => 'claude-haiku-4-5-20251001',
+        'max_tokens' => 1024,
+        'messages'   => [
+            ['role' => 'user', 'content' => $prompt]
+        ],
+    ]));
+
+    $response = curl_exec($ch);
+    $error    = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        return response()->json([
+            'success' => false,
+            'error'   => 'CURL error: ' . $error,
+        ], 500);
+    }
+
+    $data    = json_decode($response, true);
+    $content = $data['content'][0]['text'] ?? null;
+
+    if (!$content) {
+        return response()->json([
+            'success' => false,
+            'error'   => 'API Response: ' . $response,
+        ], 500);
+    }
+
+    return response()->json([
+        'success' => true,
+        'report'  => $content,
+        'student' => $student->name,
+    ]);
+}
+
 
 }

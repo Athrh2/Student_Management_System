@@ -129,6 +129,77 @@
                 </div>    
 
 
+                {{-- Final Exam Estimator --}}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white fw-bold border-0 pt-3 text-muted small text-uppercase d-flex justify-content-between align-items-center">
+        <span>🎯 Final Exam Estimator</span>
+        <small class="text-primary">Remaining 50% of total marks</small>
+    </div>
+    <div class="card-body">
+
+        {{-- What they need to pass --}}
+        <div class="row text-center mb-3">
+            @php
+                $currentPts = $student->current_progress ?? 0;
+                $targets    = [
+                    ['label' => 'Pass (50%)',        'target' => 50,  'color' => 'success'],
+                    ['label' => 'Credit (60%)',       'target' => 60,  'color' => 'primary'],
+                    ['label' => 'Distinction (75%)',  'target' => 75,  'color' => 'warning'],
+                    ['label' => 'High Dist. (85%)',   'target' => 85,  'color' => 'danger'],
+                ];
+            @endphp
+
+            @foreach($targets as $t)
+                @php
+                    $needed     = $t['target'] - $currentPts;   // points needed from final exam
+                    $neededPct  = round(($needed / 50) * 100);  // as % of final exam (out of 50)
+                    $feasible   = $neededPct <= 100;
+                @endphp
+                <div class="col-3">
+                    <div class="border rounded-3 p-2 {{ $feasible ? '' : 'opacity-50' }}">
+                        <small class="text-muted d-block" style="font-size:.72rem;">{{ $t['label'] }}</small>
+                        <span class="fw-bold text-{{ $feasible ? $t['color'] : 'secondary' }}" style="font-size:1.1rem;">
+                            {{ $feasible ? $neededPct . '%' : 'N/A' }}
+                        </span>
+                        <small class="text-muted d-block" style="font-size:.7rem;">
+                            {{ $feasible ? 'needed in exam' : 'not achievable' }}
+                        </small>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <hr class="my-3">
+
+        {{-- Simulator --}}
+        <div class="row align-items-center">
+            <div class="col-md-5">
+                <label class="text-muted small fw-bold d-block mb-1">
+                    Simulate: If I score <span id="simPct" class="text-primary fw-bold">50</span>% in final exam
+                </label>
+                <input type="range" class="form-range" id="examSlider"
+                       min="0" max="100" value="50"
+                       oninput="simulateExam(this.value,
+                           {{ $currentPts }})">
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">0%</small>
+                    <small class="text-muted">100%</small>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <small class="text-muted d-block text-uppercase" style="font-size:.72rem;">Predicted Final Score</small>
+                <h2 class="fw-bold mb-0" id="simTotal">—</h2>
+                <small class="text-muted">out of 100</small>
+            </div>
+            <div class="col-md-3 text-center">
+                <div id="simGrade" class="badge px-3 py-2 fs-6">—</div>
+                <small class="text-muted d-block mt-1" id="simMessage"></small>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 
                 <div class="card shadow-sm border-0 overflow-hidden">
                     <div class="card-header bg-{{ $riskColor }} text-white fw-bold py-3">
@@ -188,12 +259,157 @@
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 mt-4 mb-5">
-                    <a href="{{ route('students.edit', $student->id) }}" class="btn btn-warning px-4 fw-bold shadow-sm">Edit Info</a>
-                    <a href="{{ route('students.index') }}" class="btn btn-outline-secondary px-4 shadow-sm">Back to List</a>
-                </div>
+
+    {{-- AI Report Button --}}
+    <button id="generateReportBtn"
+            onclick="generateReport({{ $student->id }})"
+            class="btn btn-primary px-4 fw-bold shadow-sm">
+        <span id="reportBtnText">🤖 AI Report</span>
+        <span id="reportBtnSpinner" class="d-none">
+            <span class="spinner-border spinner-border-sm me-1"></span> Generating...
+        </span>
+    </button>
+
+    <a href="{{ route('students.edit', $student->id) }}" class="btn btn-warning px-4 fw-bold shadow-sm">Edit Info</a>
+    <a href="{{ route('students.index') }}" class="btn btn-outline-secondary px-4 shadow-sm">Back to List</a>
+</div>
+
+{{-- AI Report Modal --}}
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white"
+                 style="background:linear-gradient(135deg,#0d6efd,#6610f2)">
+                <h5 class="modal-title fw-bold">
+                    🤖 AI Academic Report — {{ $student->name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="reportContent" style="line-height:1.8;white-space:pre-wrap;font-size:.92rem;"></div>
+            </div>
+            <div class="modal-footer bg-light">
+                <small class="text-muted me-auto">Generated by Claude AI — for advisory purposes only</small>
+                <button onclick="printReport()" class="btn btn-outline-primary btn-sm">🖨️ Print</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
+</div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+// ── Final Exam Simulator ──────────────────────────────
+function simulateExam(examPct, currentPts) {
+    document.getElementById('simPct').textContent = examPct;
+
+    // Final exam is worth 50 points total
+    const examPoints = (examPct / 100) * 50;
+    const total      = currentPts + examPoints;
+    const rounded    = Math.round(total * 10) / 10;
+
+    document.getElementById('simTotal').textContent = rounded + '%';
+
+    // Grade + message
+    let grade, color, gpa;
+    if      (total >= 85) { grade = 'A';  color = 'bg-success';   gpa = '3.67 - 4.00'; }
+    else if (total >= 80) { grade = 'A-'; color = 'bg-success';   gpa = '3.34 - 3.66'; }
+    else if (total >= 75) { grade = 'B+'; color = 'bg-primary';   gpa = '3.01 - 3.33'; }
+    else if (total >= 71) { grade = 'B';  color = 'bg-primary';   gpa = '2.67 - 3.00'; }
+    else if (total >= 68) { grade = 'B-'; color = 'bg-primary';   gpa = '2.34 - 2.66'; }
+    else if (total >= 64) { grade = 'C+'; color = 'bg-info';      gpa = '2.01 - 2.33'; }
+    else if (total >= 61) { grade = 'C';  color = 'bg-info';      gpa = '1.67 - 2.00'; }
+    else if (total >= 58) { grade = 'C-'; color = 'bg-warning';   gpa = '1.31 - 1.66'; }
+    else if (total >= 54) { grade = 'D+'; color = 'bg-warning';   gpa = '1.01 - 1.30'; }
+    else if (total >= 50) { grade = 'D';  color = 'bg-warning';   gpa = '0.10 - 1.00'; }
+    else                  { grade = 'F';  color = 'bg-danger';    gpa = '0.00'; }
+
+    const gradeEl = document.getElementById('simGrade');
+    gradeEl.textContent  = grade;
+    gradeEl.className    = `badge px-3 py-2 fs-6 ${color}`;
+    document.getElementById('simMessage').textContent = msg;
+}
+
+// Run once on page load so the slider shows a result immediately
+simulateExam(50, {{ $student->current_progress ?? 0 }});
+
+// ── AI Report Generator ───────────────────────────────
+async function generateReport(studentId) {
+    const btn     = document.getElementById('generateReportBtn');
+    const btnText = document.getElementById('reportBtnText');
+    const spinner = document.getElementById('reportBtnSpinner');
+    const content = document.getElementById('reportContent');
+
+    btn.disabled = true;
+    btnText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    try {
+        const res = await fetch(`/students/${studentId}/generate-report`, {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            alert('Server error ' + res.status + ': ' + err.substring(0, 200));
+            return;
+        }
+
+        const data = await res.json();
+
+        if (data.success) {
+            content.textContent = data.report;
+            new bootstrap.Modal(document.getElementById('reportModal')).show();
+        } else {
+            alert('Error: ' + (data.error ?? 'Unknown error'));
+        }
+
+    } catch (err) {
+        alert('Failed: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btnText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+}
+
+// ── Print Report ──────────────────────────────────────
+function printReport() {
+    const content = document.getElementById('reportContent').textContent;
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <html><head><title>Academic Report</title>
+        <style>
+            body { font-family: Georgia, serif; padding: 40px; line-height: 1.8; max-width: 800px; margin: 0 auto; }
+            h2   { color: #1a237e; border-bottom: 2px solid #1a237e; padding-bottom: 8px; }
+            p    { margin-bottom: 16px; text-align: justify; }
+        </style></head>
+        <body>
+            <h2>Academic Report — {{ $student->name }}</h2>
+            <p>
+                <strong>Course:</strong> {{ $student->course }} &nbsp;|&nbsp;
+                <strong>Year:</strong> {{ $student->year }} &nbsp;|&nbsp;
+                <strong>Risk:</strong> {{ $student->risk_level }}
+            </p>
+            <hr>
+            ${content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}
+        </body></html>
+    `);
+    win.document.close();
+    win.print();
+}
+</script>
+
+
     @include('partials.chatbot')
 </body>
 </html>

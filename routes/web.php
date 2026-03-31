@@ -38,11 +38,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/students/{id}/pdf', [StudentController::class, 'downloadPDF'])->name('students.pdf');
 
     Route::get('/students/{student}', [StudentController::class, 'show']);
-});
 
     Route::resource('students', StudentController::class);
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/students/{student}/generate-report', [StudentController::class, 'generateAiReport'])
+     ->name('students.generateReport');
+});
 
 Route::post('/chatbot/ask', [ChatbotController::class, 'handleMessage']);
 

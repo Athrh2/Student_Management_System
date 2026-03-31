@@ -139,20 +139,31 @@
                 </select>
             </div>
 
+            <div class="col-md-1">
+                <select name="course" class="form-select">
+                    <option value="">Courses</option>
+                    @foreach(\App\Models\Student::distinct()->orderBy('course')->pluck('course') as $course)
+                        <option value="{{ $course }}" {{ request('course') == $course ? 'selected' : '' }}>
+                            {{ $course }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="per_page" class="form-select shadow-sm" onchange="this.form.submit()">
+                    <option value="5" {{ request('per_page') == '5' ? 'selected' : '' }}>Show 5 per page</option>
+                    <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>Show 20 per page</option>
+                    <option value="all" {{ request('per_page') == 'all' ? 'selected' : '' }}>Show All</option>
+                </select>                
+            </div>
+
             <div class="col-md-auto d-flex gap-1"> 
                 <button type="submit" class="btn btn-primary btn-sm px-5">Filter</button>
     
                 @if(request('search') || request('gender') || request('year') || request('per_page'))
                     <a href="/students" class="btn btn-outline-secondary btn-sm px-5">Reset</a>
                 @endif
-            </div>
-
-            <div class="col-md-3">
-                <select name="per_page" class="form-select shadow-sm" onchange="this.form.submit()">
-                    <option value="5" {{ request('per_page') == '5' ? 'selected' : '' }}>Show 5 per page</option>
-                    <option value="20" {{ request('per_page') == '20' ? 'selected' : '' }}>Show 20 per page</option>
-                    <option value="all" {{ request('per_page') == 'all' ? 'selected' : '' }}>Show All</option>
-                </select>                
             </div>
                 
         </form>
@@ -338,8 +349,8 @@
             </div>
 
             <div class="d-inline-flex gap-2">
-                <a href="/students/create" class="btn btn-success fw-bold shadow-sm">Add Student</a>
-
+                <a href="{{ route('students.create') }}" class="btn btn-success">Add Student</a>
+                
                 <a href="/students/export" class="btn btn-outline-success fw-bold shadow-sm">
                     <i class="bi bi-download"></i> Export CSV
                 </a>
@@ -400,7 +411,7 @@
         <h5 class="fw-bold text-dark mb-3">High Risk Students (Requires Attention)</h5>
         <div class="table-responsive">
             <table class="table table-hover align-middle">
-                <thead class="table-light">
+                <!--<thead class="table-light">
                     <tr>
                         <th>ID</th>
                         <th>Name</th>
@@ -408,13 +419,29 @@
                         <th>Weighted Score</th>
                         <th>Action</th>
                     </tr>
+                </thead> -->
+                <thead class="table-dark">
+                    <tr>
+                        <x-sort-th label="ID"     column="id" />
+                        <x-sort-th label="Name"   column="name" />
+                        <x-sort-th label="Email"  column="email" />
+                        <x-sort-th label="Gender" column="gender" />
+                        <x-sort-th label="Course" column="course" />
+                        <x-sort-th label="Year"   column="year" />
+                        <th class="text-nowrap">Risk Status</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
                 </thead>
+                
                 <tbody>
                     @forelse($highRiskStudents as $atRisk)
                         <tr> 
                             <td class="fw-bold">{{ str_pad($atRisk->id,3, '0', STR_PAD_LEFT) }}</td>
                             <td>{{ $atRisk->name }}</td>
+                            <td>{{ $atRisk->email }}</td>
+                            <td>{{ $atRisk->gender }}</td>
                             <td>{{ $atRisk->course }}</td>
+                            <td>{{ $atRisk->year }}</td>
                             <td>
                                 @php
                                     $score = ($atRisk->attendance_rate * 0.1) + ($atRisk->assignment_score * 0.25) + ($atRisk->test_score * 0.15);
@@ -458,12 +485,15 @@
         });
     });
 
-    document.getElementById('selectAll').addEventListener('click', function() {
-        let checkboxes = document.querySelectorAll('.student-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
+    // Replace with:
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('click', function() {
+            document.querySelectorAll('.student-checkbox').forEach(cb => {
+                cb.checked = this.checked;
+            });
         });
-    });
+    }
 
 </script>
 
